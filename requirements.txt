@@ -1,0 +1,5 @@
+Flask==3.0.2
+Flask-Cors==4.0.0
+anthropic==0.21.3
+numpy==1.26.4
+opencv-python-headless==4.9.0.80

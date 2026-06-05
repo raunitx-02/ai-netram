@@ -1,0 +1,10 @@
+.vercel
+uploads/
+scratch/
+*.log
+api_error.log
+claude_raw_response.log
+.gemini/
+.DS_Store
+__pycache__/
+*.pyc
