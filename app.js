@@ -198,8 +198,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Safe alert banner for general server errors
         uploadErrorBanner.classList.remove('hidden');
         let errorMsg = err.message || "Failed to analyze video file.";
-        if (window.location.protocol === 'https:') {
+        if (window.location.protocol === 'https:' && targetUrl.startsWith('http://')) {
           errorMsg = "HTTPS Security Block: Please open the app locally at http://127.0.0.1:5010/ or open index.html directly from your files to process videos.";
+        } else {
+          errorMsg = `Connection Failed: Please make sure your public tunnel URL is entered correctly in Settings (⚙️), your local python server is running, and you have clicked 'Click to Continue' on the tunnel URL once.`;
         }
         document.getElementById('upload-error-text').textContent = errorMsg;
       }
