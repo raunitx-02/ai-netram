@@ -60,8 +60,56 @@
 
       <!-- Centered Upload Container -->
       <div class="upload-center-container">
-        <div class="glass-card upload-card">
-          <h2 class="card-title">Ingest Track Camera Footage</h2>
+        <!-- Live Camera vs File Upload Mode Switcher -->
+        <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 20px;">
+          <button id="tab-live-cam" class="btn btn-primary" style="padding: 10px 20px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            <span class="pulse-dot"></span> Live Trackside Camera
+          </button>
+          <button id="tab-file-upload" class="btn btn-secondary" style="padding: 10px 20px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            📁 Recorded Footage Upload
+          </button>
+        </div>
+
+        <!-- MODE 1: LIVE RTSP CAMERA PANEL -->
+        <div class="glass-card upload-card" id="panel-live-cam" style="max-width: 650px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 class="card-title" style="margin: 0; font-size: 1.15rem;">Active Trackside Optical Feed</h2>
+            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: var(--success); font-weight: 700;">4 CAMERAS SYNCED</span>
+          </div>
+
+          <!-- Channel Selector -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;">
+            <button class="btn btn-secondary cam-channel-btn active" data-channel="1" style="padding: 8px 4px; font-size: 11px; font-weight: 700;">Cam #1 (Pit)</button>
+            <button class="btn btn-secondary cam-channel-btn" data-channel="2" style="padding: 8px 4px; font-size: 11px; font-weight: 700;">Cam #2 (Left)</button>
+            <button class="btn btn-secondary cam-channel-btn" data-channel="3" style="padding: 8px 4px; font-size: 11px; font-weight: 700;">Cam #3 (Right)</button>
+            <button class="btn btn-secondary cam-channel-btn" data-channel="4" style="padding: 8px 4px; font-size: 11px; font-weight: 700;">Cam #4 (Loco)</button>
+          </div>
+
+          <!-- Live Preview Window -->
+          <div style="position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #0b0f19; aspect-ratio: 16/9; border: 1.5px solid rgba(255,255,255,0.08); margin-bottom: 16px;">
+            <img id="live-camera-img" src="" alt="Live RTSP Feed" style="width: 100%; height: 100%; object-fit: cover;">
+            <div style="position: absolute; top: 12px; left: 12px; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 20px;">
+              <span class="pulse-dot" style="width: 8px; height: 8px; background: #ef4444;"></span>
+              <span id="live-channel-tag" style="font-size: 11px; font-weight: 700; color: #fff; text-transform: uppercase;">CAM #1 • LIVE STREAM</span>
+            </div>
+            <div style="position: absolute; bottom: 12px; right: 12px; font-family: var(--font-code); font-size: 11px; color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px;">
+              RTSP/TCP 202.176.1.220
+            </div>
+          </div>
+
+          <!-- Live Trigger Action -->
+          <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success);"></span>
+              <span>Motion Trigger: <strong>Auto Rolling-In Watch</strong></span>
+            </div>
+            <button class="btn btn-primary" id="btn-trigger-live-analysis" style="padding: 10px 22px; font-weight: 700;">Run Real-Time Audit</button>
+          </div>
+        </div>
+
+        <!-- MODE 2: RECORDED FILE UPLOAD PANEL -->
+        <div class="glass-card upload-card hidden" id="panel-file-upload">
+          <h2 class="card-title">Ingest Recorded CCTV Video</h2>
           
           <label class="upload-dropzone" id="dropzone" for="video-input">
              <input type="file" id="video-input" accept="video/*,.dav" class="file-hidden">

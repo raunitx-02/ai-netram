@@ -28,6 +28,110 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputTrainNo = document.getElementById('input-train-no');
   const inputBogieCount = document.getElementById('input-bogie-count');
 
+  // Live Camera Elements
+  const tabLiveCam = document.getElementById('tab-live-cam');
+  const tabFileUpload = document.getElementById('tab-file-upload');
+  const panelLiveCam = document.getElementById('panel-live-cam');
+  const panelFileUpload = document.getElementById('panel-file-upload');
+  const liveCameraImg = document.getElementById('live-camera-img');
+  const liveChannelTag = document.getElementById('live-channel-tag');
+  const btnTriggerLiveAnalysis = document.getElementById('btn-trigger-live-analysis');
+  const camChannelBtns = document.querySelectorAll('.cam-channel-btn');
+
+  let activeCameraChannel = "1";
+
+  // Tab switcher
+  if (tabLiveCam && tabFileUpload) {
+    tabLiveCam.addEventListener('click', () => {
+      tabLiveCam.classList.remove('btn-secondary');
+      tabLiveCam.classList.add('btn-primary');
+      tabFileUpload.classList.remove('btn-primary');
+      tabFileUpload.classList.add('btn-secondary');
+      panelLiveCam.classList.remove('hidden');
+      panelFileUpload.classList.add('hidden');
+      setLiveCameraStream(activeCameraChannel);
+    });
+
+    tabFileUpload.addEventListener('click', () => {
+      tabFileUpload.classList.remove('btn-secondary');
+      tabFileUpload.classList.add('btn-primary');
+      tabLiveCam.classList.remove('btn-primary');
+      tabLiveCam.classList.add('btn-secondary');
+      panelFileUpload.classList.remove('hidden');
+      panelLiveCam.classList.add('hidden');
+    });
+  }
+
+  // Camera Channel Selection
+  function setLiveCameraStream(channelId) {
+    activeCameraChannel = channelId;
+    if (liveCameraImg) {
+      liveCameraImg.src = getApiUrl(`/api/stream/${channelId}`);
+    }
+    if (liveChannelTag) {
+      liveChannelTag.textContent = `CAM #${channelId} • LIVE STREAM`;
+    }
+    camChannelBtns.forEach(btn => {
+      if (btn.getAttribute('data-channel') === channelId) {
+        btn.classList.add('active');
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+      } else {
+        btn.classList.remove('active');
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+      }
+    });
+  }
+
+  camChannelBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ch = btn.getAttribute('data-channel');
+      setLiveCameraStream(ch);
+    });
+  });
+
+  // Initialize Channel 1 Stream
+  setLiveCameraStream("1");
+
+  // Trigger Live Feed Analysis
+  if (btnTriggerLiveAnalysis) {
+    btnTriggerLiveAnalysis.addEventListener('click', () => {
+      uploadErrorBanner.classList.add('hidden');
+      btnTriggerLiveAnalysis.textContent = "Connecting Live Optical Feed...";
+      btnTriggerLiveAnalysis.disabled = true;
+
+      const targetUrl = getApiUrl(`/api/analyze_live/${activeCameraChannel}`);
+      const headers = {};
+      if (!targetUrl.includes('127.0.0.1') && !targetUrl.includes('localhost')) {
+        headers['bypass-tunnel-reminder'] = 'true';
+      }
+
+      fetch(targetUrl, {
+        method: 'POST',
+        headers: headers
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("AI Server failed to capture live stream.");
+        return res.json();
+      })
+      .then(data => {
+        btnTriggerLiveAnalysis.textContent = "Run Real-Time Audit";
+        btnTriggerLiveAnalysis.disabled = false;
+        window.realAnalysisResult = data;
+        screenUpload.classList.remove('active');
+        screenProcessing.classList.add('active');
+        startAnalysisProcess(true);
+      })
+      .catch(err => {
+        btnTriggerLiveAnalysis.textContent = "Run Real-Time Audit";
+        btnTriggerLiveAnalysis.disabled = false;
+        uploadErrorBanner.classList.remove('hidden');
+        document.getElementById('upload-error-text').textContent = err.message || "Live stream capture failed.";
+      });
+    });
+  }
+
   // Canvas & Video Elements
   const sourceVideo = document.getElementById('source-video');
   const analysisCanvas = document.getElementById('analysis-canvas');

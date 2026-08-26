@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  ai-netram-backend:
+    build: .
+    container_name: ai-netram-server
+    restart: always
+    ports:
+      - "5010:5010"
+    environment:
+      - PORT=5010
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - RTSP_CAM_1=rtsp://admin:admin%40123@202.176.1.220:554/cam/realmonitor?channel=1&subtype=0
+      - RTSP_CAM_2=rtsp://admin:admin%40123@202.176.1.220:554/cam/realmonitor?channel=2&subtype=0
+      - RTSP_CAM_3=rtsp://admin:admin%40123@202.176.1.220:554/cam/realmonitor?channel=3&subtype=0
+      - RTSP_CAM_4=rtsp://admin:admin%40123@202.176.1.220:554/cam/realmonitor?channel=4&subtype=0
+    volumes:
+      - ./uploads:/app/uploads
+      - ./assets:/app/assets
