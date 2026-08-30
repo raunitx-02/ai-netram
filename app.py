@@ -581,18 +581,41 @@ def stream_camera(channel_id):
 
 @app.route('/api/analyze_live/<channel_id>', methods=['POST'])
 def analyze_live_feed(channel_id):
-    # Triggers instant passage analytics from the live camera stream
+    # Live optical sensor & train passage detector
     rtsp_url = RTSP_CAMERAS.get(str(channel_id), RTSP_CAMERAS["1"])
     os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp'
     cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
     
+    if not cap.isOpened():
+        # Camera is unreachable from public IP due to client's firewall
+        return jsonify({
+            "error": "Optical Feed Disconnected: Camera is unreachable over the internet (Port 554/37777 blocked by yard router). Please run AI-Netram on the local yard PC or upload recorded CCTV footage."
+        }), 422
+        
     captured_frames = []
-    if cap.isOpened():
-        for _ in range(25): # Capture 25 continuous live frames
-            ret, frame = cap.read()
-            if ret:
-                captured_frames.append(frame)
-        cap.release()
+    has_train_motion = False
+    prev_gray = None
+    
+    # Analyze real-time 30-frame window for moving rolling stock
+    for _ in range(30):
+        ret, frame = cap.read()
+        if not ret:
+            break
+        captured_frames.append(frame)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if prev_gray is not None:
+            diff = cv2.absdiff(prev_gray, gray)
+            motion_score = np.mean(diff)
+            if motion_score > 12.0: # Significant motion threshold across track
+                has_train_motion = True
+        prev_gray = gray
+        
+    cap.release()
+    
+    if not has_train_motion:
+        return jsonify({
+            "error": "Track Status: Idle / Clear. No rolling stock or train passage detected in the optical camera view right now. AI-Netram is in Standby Watch Mode."
+        }), 422
         
     bogie_count = int(request.form.get('bogie_count', 8))
     
