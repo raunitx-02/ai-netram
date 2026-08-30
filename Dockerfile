@@ -24,4 +24,4 @@ ENV PORT=10000
 EXPOSE 10000
 
 # Run with Gunicorn production server on port 10000
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:10000", "--threads", "4", "--timeout", "120", "app:app"]
+CMD exec gunicorn -w 1 -b 0.0.0.0:10000 --threads 4 --timeout 120 app:app
