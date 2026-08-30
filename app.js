@@ -65,11 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Camera Channel Selection
+  // Camera Channel Selection with Instant Switching
   function setLiveCameraStream(channelId) {
     activeCameraChannel = channelId;
     if (liveCameraImg) {
-      liveCameraImg.src = getApiUrl(`/api/stream/${channelId}`);
+      // Force instant reconnect by appending timestamp to abort previous hanging connection
+      liveCameraImg.src = getApiUrl(`/api/stream/${channelId}?t=${Date.now()}`);
     }
     if (liveChannelTag) {
       liveChannelTag.textContent = `CAM #${channelId} • LIVE STREAM`;
