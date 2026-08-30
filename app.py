@@ -89,6 +89,10 @@ def extract_and_crop_wagon_assets(video_path, bogie_count):
     cap.release()
     return wagon_frames
 
+@app.route('/healthz')
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
 @app.route('/')
 def serve_index():
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'index.html')
