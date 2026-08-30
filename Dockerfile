@@ -24,5 +24,5 @@ COPY . .
 ENV PORT=5010
 EXPOSE 5010
 
-# Run directly with Python Flask server listening on Render PORT
-CMD ["python", "app.py"]
+# Run with Gunicorn production server on port 5010
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5010", "--threads", "4", "--timeout", "120", "app:app"]
