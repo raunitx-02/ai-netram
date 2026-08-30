@@ -532,48 +532,66 @@ def get_camera_channels():
         ]
     })
 
-# Resilient low-latency channel streaming
+# Dedicated background camera frame grabbers
+import threading
+
+ACTIVE_CAM_FRAMES = {}
+CAM_LOCKS = {}
+
+def camera_reader_worker(ch_id):
+    rtsp_url = RTSP_CAMERAS.get(str(ch_id), RTSP_CAMERAS.get("1"))
+    while True:
+        try:
+            os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|analyzeduration;1000000|probesize;1000000'
+            cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+            if not cap.isOpened():
+                import time
+                time.sleep(2)
+                continue
+                
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    resized = cv2.resize(frame, (640, 360))
+                    ACTIVE_CAM_FRAMES[str(ch_id)] = resized
+                else:
+                    break
+            cap.release()
+        except Exception:
+            import time
+            time.sleep(2)
+
+# Start background readers for channels 1 to 4
+for c_id in ["1", "2", "3", "4"]:
+    t = threading.Thread(target=camera_reader_worker, args=(c_id,), daemon=True)
+    t.start()
+
 def generate_live_stream_frames(channel_id):
-    rtsp_url = RTSP_CAMERAS.get(str(channel_id), RTSP_CAMERAS.get("1"))
-    
-    # Pre-render standard track canvas for instant fallback
+    ch_str = str(channel_id)
     base_canvas = np.zeros((360, 640, 3), dtype=np.uint8)
     base_canvas[:] = (20, 24, 38)
     # Track rails
     cv2.line(base_canvas, (0, 260), (640, 260), (75, 85, 110), 2)
     cv2.line(base_canvas, (0, 295), (640, 295), (50, 60, 80), 2)
     
-    # Sleep timer for 30 fps
     import datetime, time
     
     while True:
-        frame_to_send = None
-        
-        # Try to capture from RTSP if available
-        # Note: Set short timeout to avoid thread hanging
-        try:
-            os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|analyzeduration;500000|probesize;500000|stimeout;1000000'
-            cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
-            if cap.isOpened():
-                ret, live_f = cap.read()
-                if ret and live_f is not None:
-                    frame_to_send = cv2.resize(live_f, (640, 360))
-                cap.release()
-        except Exception:
-            pass
-            
-        if frame_to_send is None:
-            # Active optical simulation canvas
+        # Check if live frame is available from background thread
+        live_frame = ACTIVE_CAM_FRAMES.get(ch_str)
+        if live_frame is not None:
+            frame_to_send = live_frame.copy()
+        else:
             frame_to_send = base_canvas.copy()
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cv2.putText(frame_to_send, f"TRACK CAM #{channel_id} • REAL-TIME FEED", (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 180), 2)
+            cv2.putText(frame_to_send, f"TRACK CAM #{ch_str} • REAL-TIME FEED", (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 180), 2)
             cv2.putText(frame_to_send, f"{now_str} UTC | 30 FPS", (20, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (160, 175, 200), 1)
             cv2.putText(frame_to_send, "ROLLING STOCK PASSAGE WATCH: ACTIVE", (20, 335), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (99, 102, 241), 1)
-            time.sleep(0.033)
             
-        _, buffer = cv2.imencode('.jpg', frame_to_send, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+        _, buffer = cv2.imencode('.jpg', frame_to_send, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+        time.sleep(0.033)
 
 @app.route('/api/stream/<channel_id>')
 def stream_camera(channel_id):
