@@ -24,5 +24,5 @@ COPY . .
 ENV PORT=5010
 EXPOSE 5010
 
-# Run with Gunicorn production server
-CMD ["gunicorn", "--bind", "0.0.0.0:5010", "--workers", "2", "--timeout", "120", "app:app"]
+# Run with Gunicorn production server (1 worker with multi-threading for shared RTSP memory)
+CMD ["gunicorn", "--bind", "0.0.0.0:5010", "--workers", "1", "--threads", "8", "--timeout", "0", "app:app"]
