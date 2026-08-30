@@ -24,5 +24,5 @@ COPY . .
 ENV PORT=5010
 EXPOSE 5010
 
-# Run with Gunicorn production server bound to Render dynamic port
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5010} --workers 1 --threads 8 --timeout 0 app:app"]
+# Run directly with Python Flask server listening on Render PORT
+CMD ["python", "app.py"]
