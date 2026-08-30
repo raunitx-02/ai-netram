@@ -532,40 +532,27 @@ def get_camera_channels():
         ]
     })
 
-# Dedicated background camera frame grabbers
-import threading
-
-ACTIVE_CAM_FRAMES = {}
+# Memory-Safe On-Demand RTSP Frame Capture (Prevents Free-Tier RAM Exhaustion)
+LAST_VALID_FRAMES = {}
 FRAME_LOCK = threading.Lock()
 
-def camera_reader_worker(ch_id):
+def get_channel_snapshot(ch_id):
     rtsp_url = RTSP_CAMERAS.get(str(ch_id), RTSP_CAMERAS.get("1"))
-    while True:
-        try:
-            os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|analyzeduration;500000|probesize;500000|stimeout;2000000'
-            cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
-            if not cap.isOpened():
-                import time
-                time.sleep(3)
-                continue
-                
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if ret and frame is not None:
-                    resized = cv2.resize(frame, (640, 360))
-                    with FRAME_LOCK:
-                        ACTIVE_CAM_FRAMES[str(ch_id)] = resized
-                else:
-                    break
+    try:
+        os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|analyzeduration;500000|probesize;500000|stimeout;1500000'
+        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+        if cap.isOpened():
+            ret, frame = cap.read()
             cap.release()
-        except Exception:
-            import time
-            time.sleep(3)
-
-# Start background readers for channels 1 to 4
-for c_id in ["1", "2", "3", "4"]:
-    t = threading.Thread(target=camera_reader_worker, args=(c_id,), daemon=True)
-    t.start()
+            if ret and frame is not None:
+                resized = cv2.resize(frame, (640, 360))
+                with FRAME_LOCK:
+                    LAST_VALID_FRAMES[str(ch_id)] = resized
+                return resized
+    except Exception:
+        pass
+    with FRAME_LOCK:
+        return LAST_VALID_FRAMES.get(str(ch_id))
 
 def generate_live_stream_frames(channel_id):
     ch_str = str(channel_id)
@@ -578,23 +565,20 @@ def generate_live_stream_frames(channel_id):
     import datetime, time
     
     while True:
-        frame_to_send = None
-        with FRAME_LOCK:
-            live_frame = ACTIVE_CAM_FRAMES.get(ch_str)
-            if live_frame is not None:
-                frame_to_send = live_frame.copy()
-                
-        if frame_to_send is None:
+        live_frame = get_channel_snapshot(ch_str)
+        if live_frame is not None:
+            frame_to_send = live_frame.copy()
+        else:
             frame_to_send = base_canvas.copy()
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cv2.putText(frame_to_send, f"TRACK CAM #{ch_str} • ACTIVE SENSOR", (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 180), 2)
             cv2.putText(frame_to_send, f"{now_str} UTC | 30 FPS", (20, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (160, 175, 200), 1)
             cv2.putText(frame_to_send, "ROLLING STOCK PASSAGE WATCH: ACTIVE", (20, 335), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (99, 102, 241), 1)
             
-        _, buffer = cv2.imencode('.jpg', frame_to_send, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+        _, buffer = cv2.imencode('.jpg', frame_to_send, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-        time.sleep(0.033)
+        time.sleep(0.04) # 25 fps smooth flow
 
 @app.route('/api/stream/<channel_id>')
 def stream_camera(channel_id):
