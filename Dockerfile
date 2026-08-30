@@ -24,5 +24,5 @@ COPY . .
 ENV PORT=5010
 EXPOSE 5010
 
-# Run with Gunicorn production server on port 5010
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5010", "--threads", "4", "--timeout", "120", "app:app"]
+# Run with Gunicorn production server bound to Render PORT variable
+CMD ["sh", "-c", "gunicorn -w 1 -b 0.0.0.0:${PORT:-10000} --threads 4 --timeout 120 app:app"]
