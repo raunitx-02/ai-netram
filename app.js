@@ -65,21 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Camera Channel Selection with Instant Switching
+  // High-Performance Zero-Stall Live Optical Feed Viewer
+  let cameraStreamInterval = null;
+
   function setLiveCameraStream(channelId) {
     activeCameraChannel = String(channelId);
-    if (liveCameraImg) {
-      // Clear and reconnect cleanly
-      const streamUrl = getApiUrl(`/api/stream/${activeCameraChannel}?_t=${Date.now()}`);
-      liveCameraImg.onload = () => { liveCameraImg.style.display = 'block'; };
-      liveCameraImg.onerror = () => { /* keep stream trying */ };
-      liveCameraImg.src = streamUrl;
-    }
-    if (liveChannelTag) {
-      liveChannelTag.textContent = `CAM #${channelId} • LIVE STREAM`;
-    }
+    
+    // Update button states
     camChannelBtns.forEach(btn => {
-      if (btn.getAttribute('data-channel') === String(channelId)) {
+      if (btn.getAttribute('data-channel') === activeCameraChannel) {
         btn.classList.add('active');
         btn.classList.remove('btn-secondary');
         btn.classList.add('btn-primary');
@@ -89,10 +83,20 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('btn-secondary');
       }
     });
+
+    if (liveChannelTag) {
+      liveChannelTag.textContent = `CAM #${activeCameraChannel} • LIVE STREAM`;
+    }
+
+    if (liveCameraImg) {
+      // Direct stream URL
+      liveCameraImg.src = getApiUrl(`/api/stream/${activeCameraChannel}?_t=${Date.now()}`);
+    }
   }
 
   camChannelBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
       const ch = btn.getAttribute('data-channel');
       setLiveCameraStream(ch);
     });
