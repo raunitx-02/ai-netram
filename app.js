@@ -1,12 +1,15 @@
 // AI-Netram Prototype Logic
 
 document.addEventListener('DOMContentLoaded', () => {
-  // API URL Helper for Vercel vs Local (checks localStorage for dynamic config)
+  // API URL Helper (uses current host when deployed on cloud or local storage config)
   const getApiUrl = (path) => {
     let configuredEndpoint = localStorage.getItem('api_endpoint');
     if (configuredEndpoint) {
       configuredEndpoint = configuredEndpoint.trim().replace(/\/+$/, '');
       return configuredEndpoint + path;
+    }
+    if (window.location.protocol.startsWith('http')) {
+      return window.location.origin + path;
     }
     return 'http://127.0.0.1:5010' + path;
   };
