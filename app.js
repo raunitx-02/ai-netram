@@ -67,16 +67,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Camera Channel Selection with Instant Switching
   function setLiveCameraStream(channelId) {
-    activeCameraChannel = channelId;
+    activeCameraChannel = String(channelId);
     if (liveCameraImg) {
-      // Force instant reconnect by appending timestamp to abort previous hanging connection
-      liveCameraImg.src = getApiUrl(`/api/stream/${channelId}?t=${Date.now()}`);
+      // Clear and reconnect cleanly
+      const streamUrl = getApiUrl(`/api/stream/${activeCameraChannel}?_t=${Date.now()}`);
+      liveCameraImg.onload = () => { liveCameraImg.style.display = 'block'; };
+      liveCameraImg.onerror = () => { /* keep stream trying */ };
+      liveCameraImg.src = streamUrl;
     }
     if (liveChannelTag) {
       liveChannelTag.textContent = `CAM #${channelId} • LIVE STREAM`;
     }
     camChannelBtns.forEach(btn => {
-      if (btn.getAttribute('data-channel') === channelId) {
+      if (btn.getAttribute('data-channel') === String(channelId)) {
         btn.classList.add('active');
         btn.classList.remove('btn-secondary');
         btn.classList.add('btn-primary');
