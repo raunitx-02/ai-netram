@@ -20,9 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 # Copy project files
 COPY . .
 
-# Set default port
-ENV PORT=5010
-EXPOSE 5010
+ENV PORT=10000
+EXPOSE 10000
 
-# Run with Gunicorn production server bound to Render PORT variable
-CMD ["sh", "-c", "gunicorn -w 1 -b 0.0.0.0:${PORT:-10000} --threads 4 --timeout 120 app:app"]
+# Run with Gunicorn production server on port 10000
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:10000", "--threads", "4", "--timeout", "120", "app:app"]
