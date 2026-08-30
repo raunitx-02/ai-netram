@@ -536,30 +536,31 @@ def get_camera_channels():
 import threading
 
 ACTIVE_CAM_FRAMES = {}
-CAM_LOCKS = {}
+FRAME_LOCK = threading.Lock()
 
 def camera_reader_worker(ch_id):
     rtsp_url = RTSP_CAMERAS.get(str(ch_id), RTSP_CAMERAS.get("1"))
     while True:
         try:
-            os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|analyzeduration;1000000|probesize;1000000'
+            os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|analyzeduration;500000|probesize;500000|stimeout;2000000'
             cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
             if not cap.isOpened():
                 import time
-                time.sleep(2)
+                time.sleep(3)
                 continue
                 
             while cap.isOpened():
                 ret, frame = cap.read()
                 if ret and frame is not None:
                     resized = cv2.resize(frame, (640, 360))
-                    ACTIVE_CAM_FRAMES[str(ch_id)] = resized
+                    with FRAME_LOCK:
+                        ACTIVE_CAM_FRAMES[str(ch_id)] = resized
                 else:
                     break
             cap.release()
         except Exception:
             import time
-            time.sleep(2)
+            time.sleep(3)
 
 # Start background readers for channels 1 to 4
 for c_id in ["1", "2", "3", "4"]:
@@ -577,14 +578,16 @@ def generate_live_stream_frames(channel_id):
     import datetime, time
     
     while True:
-        # Check if live frame is available from background thread
-        live_frame = ACTIVE_CAM_FRAMES.get(ch_str)
-        if live_frame is not None:
-            frame_to_send = live_frame.copy()
-        else:
+        frame_to_send = None
+        with FRAME_LOCK:
+            live_frame = ACTIVE_CAM_FRAMES.get(ch_str)
+            if live_frame is not None:
+                frame_to_send = live_frame.copy()
+                
+        if frame_to_send is None:
             frame_to_send = base_canvas.copy()
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cv2.putText(frame_to_send, f"TRACK CAM #{ch_str} • REAL-TIME FEED", (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 180), 2)
+            cv2.putText(frame_to_send, f"TRACK CAM #{ch_str} • ACTIVE SENSOR", (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 180), 2)
             cv2.putText(frame_to_send, f"{now_str} UTC | 30 FPS", (20, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (160, 175, 200), 1)
             cv2.putText(frame_to_send, "ROLLING STOCK PASSAGE WATCH: ACTIVE", (20, 335), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (99, 102, 241), 1)
             
